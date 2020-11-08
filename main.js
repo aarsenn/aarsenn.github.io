@@ -71,7 +71,7 @@ const Count = (count) => `
 `;
 
 const Button = (text, handler) => `
-  <button onclick="${handler}">${text}</button>
+  <button type="button" onclick="${handler}">${text}</button>
 `;
 
 const AppComponent = (bag) => {
