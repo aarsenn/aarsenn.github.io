@@ -74,14 +74,14 @@ const Button = (text, handler) => `
   <button type="button" onclick="${handler}">${text}</button>
 `;
 
-const AppComponent = (bag) => {
+const App = (bag) => {
   const { state, setState, render } = bag;
 
   const increment = () => {
     const newState = setState({
       count: state.count + 1
     });
-    render(AppComponent, { ...bag, state: newState });
+    render(App, { ...bag, state: newState });
   };
 
   const clear = () => {
@@ -89,7 +89,7 @@ const AppComponent = (bag) => {
     const newState = setState({
       count: 0
     });
-    render(AppComponent, { ...bag, state: newState });
+    render(App, { ...bag, state: newState });
   };
 
   const style = `
@@ -124,7 +124,7 @@ const AppComponent = (bag) => {
 const main = () => {
   const bag = bootstrap('#app');
   const { render } = bag;
-  render(AppComponent, bag);
+  render(App, bag);
 };
 
 main();
