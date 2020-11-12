@@ -1,95 +1,31 @@
-// state
-const localStorageStateProvider = () => ({
-  getState: () => localStorage.getItem('state'),
-  setState: state => localStorage.setItem('state', state)
-});
-
-const initState = stateProvider => JSON.parse(stateProvider.getState()) || { count: 0 };
-
-const createSetState = (state, provider) => newState => {
-  state = mergeDeep(state, newState);
-  provider.setState(JSON.stringify(state));
-  return state;
-};
-
-// render
-const createRender = rootElement => (component, lib) => {
-  window.__handlers = [];
-  rootElement.innerHTML = component(lib);
-};
-
-const bindHandler = (handler) => {
-  if (!window.__handlers) {
-    window.__handlers = [];
-  }
-
-  window.__handlers.push(handler);
-
-  return `__handlers[${window.__handlers.length - 1}](event)`;
-};
-
-// utils
-const mergeDeep = (...objects) => {
-  const isObject = obj => obj && typeof obj === 'object';
-  
-  return objects.reduce((prev, obj) => {
-    Object.keys(obj).forEach(key => {
-      const pVal = prev[key];
-      const oVal = obj[key];
-      
-      if (Array.isArray(pVal) && Array.isArray(oVal)) {
-        prev[key] = pVal.concat(...oVal);
-      }
-      else if (isObject(pVal) && isObject(oVal)) {
-        prev[key] = mergeDeep(pVal, oVal);
-      }
-      else {
-        prev[key] = oVal;
-      }
-    });
-    
-    return prev;
-  }, {});
-};
-
-//bootstrap
-const bootstrap = (elementId) => {
-  const stateProvider = localStorageStateProvider();
-  const state = initState(stateProvider);
-  const render = createRender(document.querySelector(elementId));
-  const setState = createSetState(state, stateProvider);
-  return { render, setState, state };
-};
-
-//components
-const Image = src => `
-  <img src="${src}"/>
-`;
-
-const Count = (count) => `
-  <h1 style="color: #fff;">Випито чаю - ${count}</h1>
-`;
-
-const Button = (text, handler) => `
-  <button type="button" onclick="${handler}">${text}</button>
-`;
-
-const App = (bag) => {
-  const { state, setState, render } = bag;
-
-  const increment = () => {
-    const newState = setState({
-      count: state.count + 1
-    });
-    render(App, { ...bag, state: newState });
+const createPersistProvider = key => {
+  const get = () => {
+    const str = localStorage.getItem(key)
+    return Number(str) || 0;
   };
 
-  const clear = () => {
-    if(!confirm('Очистити лічильник чаю?')) return;
-    const newState = setState({
-      count: 0
-    });
-    render(App, { ...bag, state: newState });
+  const set = count => localStorage.setItem(key, count);
+
+  return { get, set }
+};
+
+const TeaCounter = (
+  { message, addButtonMessage, resetButtonMessage, confirmResetMessage }
+) => {
+  const countPersist = createPersistProvider('count');
+
+  const $count = obs(countPersist.get());
+
+  const $message = compute(
+    count => `${message} - ${count}`,
+    $count
+  );
+
+  const increment = () => $count.set($count.get() + 1);
+
+  const reset = () => {
+    if(!confirm(confirmResetMessage)) return;
+    $count.set(0)
   };
 
   const style = `
@@ -98,33 +34,48 @@ const App = (bag) => {
     padding: 30px;
     height: calc(100% - 60px);
     align-items: center;
+    display: flex;
+    color: #fff
   `;
 
-  return `
-    <div style="${style}">
-      <div>
-        ${Image('images/tea.png')}
-      </div>
-      <div>
-        ${Count(state.count)}
-        ${Button(
-          'Плюс чаюха',
-          bindHandler(increment),
-        )}
-        ${Button(
-          'Обнулити',
-          bindHandler(clear),
-        )}
-      </div>
-    </div>
-  `
+  const btnStyle = `
+    margin-right: 15px
+  `;
+
+  $count.subscribe(
+    count => countPersist.set(count)
+  );
+
+  return div({ style, className: 'tea-counter' }, [
+    img({ src: 'images/tea.png' }),
+    div({}, [
+      h1({ innerText: $message }),
+      button({
+        style: btnStyle,
+        innerText: addButtonMessage,
+        onclick: increment
+      }),
+      button({
+        innerText: resetButtonMessage,
+        onclick: reset
+      })
+    ])
+  ]);
 };
 
-// main
+const App = () => {
+  return TeaCounter({
+    message: 'Випито чаю',
+    addButtonMessage: 'Плюс чаюха',
+    resetButtonMessage: 'Обнулити',
+    confirmResetMessage: 'Обнулити чаюхи?'
+  })
+};
+
 const main = () => {
-  const bag = bootstrap('#app');
-  const { render } = bag;
-  render(App, bag);
+  const rootCmp = App();
+  const rootEl = document.querySelector('#app');
+  rootEl.appendChild(rootCmp.elRef());
 };
 
 main();
